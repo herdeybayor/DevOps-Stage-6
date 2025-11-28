@@ -63,6 +63,9 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
                requestPath.equals("/health") ||
                requestPath.equals("/health.json") ||
                requestPath.equals("/actuator/health") ||
+               requestPath.equals("/users/health") ||
+               requestPath.equals("/users/health.json") ||
+               requestPath.equals("/users/actuator/health") ||
                requestPath.startsWith("/favicon");
     }
 }
