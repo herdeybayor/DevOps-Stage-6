@@ -23,7 +23,7 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: ${LETSENCRYPT_EMAIL}
+      email: herdeybayor4real@gmail.com
       storage: /acme.json
       httpChallenge:
         entryPoint: http
