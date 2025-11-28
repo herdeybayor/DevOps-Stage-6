@@ -15,7 +15,7 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: devops-stage-6_app-network
+    network: app_app-network
   file:
     directory: "/config"
     watch: true
