@@ -15,7 +15,7 @@ COPY src ./src
 RUN mvn package -DskipTests
 
 # Stage 2: Create runtime image
-FROM openjdk:8-jdk-slim
+FROM eclipse-temurin:8-jre-focal
 
 WORKDIR /app
 
