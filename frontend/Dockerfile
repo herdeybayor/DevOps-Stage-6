@@ -1,14 +1,14 @@
 # Multi-stage build for Vue.js frontend
 # Stage 1: Build the application
-FROM node:20-alpine as builder
+FROM node:16-alpine as builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with build tools for node-sass
-RUN apk add --no-cache python3 make g++ && npm install --legacy-peer-deps
+# Install dependencies
+RUN npm install
 
 # Copy application source
 COPY . .
