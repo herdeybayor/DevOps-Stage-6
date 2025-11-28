@@ -7,8 +7,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install build dependencies needed for node-sass compilation
+RUN apk add --no-cache python3 make g++ && \
+    npm install --legacy-peer-deps --ignore-scripts && \
+    npm rebuild node-sass
 
 # Copy application source
 COPY . .
