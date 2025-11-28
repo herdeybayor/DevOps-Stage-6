@@ -5,6 +5,12 @@ http:
         scheme: https
         permanent: true
 
+    # Disabled for now until valid HTTPS certificates are available
+    # Remove this comment and the redirect-off middleware once HTTPS is configured
+    redirect-off:
+      redirectScheme:
+        scheme: http
+
     cors-headers:
       headers:
         accessControlAllowMethods:
