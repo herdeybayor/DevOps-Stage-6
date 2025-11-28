@@ -1,0 +1,35 @@
+---
+- name: Deploy DevOps Stage 6 Microservices Application
+  hosts: app_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    app_user: ubuntu
+    app_directory: /home/ubuntu/app
+    docker_compose_version: "2.23.0"
+
+  roles:
+    - role: dependencies
+      tags: ['dependencies', 'setup']
+    
+    - role: deploy
+      tags: ['deploy', 'application']
+
+  post_tasks:
+    - name: Display deployment information
+      debug:
+        msg: |
+          ========================================
+          Deployment Complete!
+          ========================================
+          Server IP: {{ ansible_host }}
+          Application Directory: {{ app_directory }}
+          Services: frontend, auth-api, todos-api, users-api, log-processor, redis, traefik
+          
+          Next Steps:
+          1. Ensure your domain DNS points to {{ ansible_host }}
+          2. Wait for SSL certificates to be issued (may take a few minutes)
+          3. Access your application at https://{{ domain_name }}
+          ========================================
+

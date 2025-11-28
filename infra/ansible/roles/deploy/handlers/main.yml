@@ -1,0 +1,12 @@
+---
+- name: Restart Docker Compose services
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    state: present
+    restarted: yes
+  become_user: ubuntu
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+

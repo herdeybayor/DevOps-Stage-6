@@ -1,0 +1,153 @@
+---
+- name: Check if application repository exists
+  stat:
+    path: "{{ app_directory }}/.git"
+  register: git_repo
+
+- name: Clone application repository
+  git:
+    repo: "{{ github_repo_url }}"
+    dest: "{{ app_directory }}"
+    version: main
+    force: yes
+  become_user: ubuntu
+  when: not git_repo.stat.exists
+
+- name: Pull latest changes from repository
+  git:
+    repo: "{{ github_repo_url }}"
+    dest: "{{ app_directory }}"
+    version: main
+    force: yes
+  become_user: ubuntu
+  register: git_pull
+  when: git_repo.stat.exists
+
+- name: Create .env file from template
+  template:
+    src: env.j2
+    dest: "{{ app_directory }}/.env"
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+  notify: Restart Docker Compose services
+
+- name: Create traefik directory
+  file:
+    path: "{{ app_directory }}/traefik"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Create traefik config directory
+  file:
+    path: "{{ app_directory }}/traefik/config"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Create acme.json file for Let's Encrypt certificates
+  file:
+    path: "{{ app_directory }}/traefik/acme.json"
+    state: touch
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+
+- name: Stop existing containers (if any)
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    state: absent
+  become_user: ubuntu
+  ignore_errors: yes
+
+- name: Build and start Docker Compose services
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    state: present
+    build: yes
+    pull: yes
+    remove_orphans: yes
+  become_user: ubuntu
+  register: docker_compose_result
+  retries: 3
+  delay: 10
+  until: docker_compose_result is succeeded
+
+- name: Wait for services to be healthy
+  wait_for:
+    host: localhost
+    port: "{{ item }}"
+    delay: 5
+    timeout: 120
+  loop:
+    - 80
+    - 443
+  ignore_errors: yes
+
+- name: Check if Traefik is running
+  command: docker ps --filter "name=traefik" --format "{{ '{{' }}.Names{{ '}}' }}"
+  register: traefik_status
+  changed_when: false
+  become_user: ubuntu
+
+- name: Display Traefik status
+  debug:
+    msg: "Traefik container status: {{ traefik_status.stdout }}"
+
+- name: Check running containers
+  command: docker ps --format "table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}"
+  register: running_containers
+  changed_when: false
+  become_user: ubuntu
+
+- name: Display running containers
+  debug:
+    msg: "{{ running_containers.stdout_lines }}"
+
+- name: Set up container log rotation
+  copy:
+    content: |
+      {{ app_directory }}/logs/*.log {
+        daily
+        rotate 7
+        compress
+        delaycompress
+        missingok
+        notifempty
+        create 0640 ubuntu ubuntu
+      }
+    dest: /etc/logrotate.d/app-containers
+    mode: '0644'
+
+- name: Create systemd service for Docker Compose
+  copy:
+    content: |
+      [Unit]
+      Description=DevOps Stage 6 Application
+      Requires=docker.service
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory={{ app_directory }}
+      ExecStart=/usr/bin/docker compose up -d
+      ExecStop=/usr/bin/docker compose down
+      User=ubuntu
+      Group=ubuntu
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/devops-app.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable devops-app service
+  systemd:
+    name: devops-app
+    enabled: yes
+    daemon_reload: yes
+

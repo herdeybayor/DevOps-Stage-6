@@ -1,0 +1,20 @@
+# AWS Configuration
+aws_region = "us-east-1"
+environment = "production"
+
+# EC2 Configuration
+instance_type = "t3.medium"
+key_name      = "your-key-pair-name"  # Name of your AWS key pair (without .pem extension)
+
+# Application Configuration
+domain_name        = "your-domain.com"
+letsencrypt_email  = "your-email@example.com"
+jwt_secret         = "your-super-secret-jwt-key-change-this"
+github_repo_url    = "https://github.com/yourusername/DevOps-Stage-6.git"
+
+# Security Configuration
+allowed_ssh_cidr = "0.0.0.0/0"  # Restrict this to your IP for better security
+
+# Project Configuration
+project_name = "devops-stage6"
+

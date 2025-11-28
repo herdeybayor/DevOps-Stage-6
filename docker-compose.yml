@@ -1,0 +1,206 @@
+version: '3.8'
+
+services:
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - app-network
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+      - ./traefik/config:/config:ro
+    environment:
+      - TZ=UTC
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN_NAME}`)"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+  # Redis Queue
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Users API (Java Spring Boot)
+  users-api:
+    build:
+      context: ./users-api
+      dockerfile: Dockerfile
+    container_name: users-api
+    restart: unless-stopped
+    networks:
+      - app-network
+    environment:
+      - SERVER_PORT=8083
+      - SPRING_ZIPKIN_BASE_URL=${ZIPKIN_URL:-http://zipkin:9411}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/users`)"
+      - "traefik.http.routers.users-api.entrypoints=http"
+      - "traefik.http.routers.users-api.middlewares=https-redirect"
+      - "traefik.http.routers.users-api-secure.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/users`)"
+      - "traefik.http.routers.users-api-secure.entrypoints=https"
+      - "traefik.http.routers.users-api-secure.tls=true"
+      - "traefik.http.routers.users-api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.users-api.loadbalancer.server.port=8083"
+      - "traefik.http.middlewares.users-api-stripprefix.stripprefix.prefixes=/api/users"
+      - "traefik.http.routers.users-api-secure.middlewares=users-api-stripprefix,cors-headers"
+
+  # Auth API (Go)
+  auth-api:
+    build:
+      context: ./auth-api
+      dockerfile: Dockerfile
+    container_name: auth-api
+    restart: unless-stopped
+    networks:
+      - app-network
+    environment:
+      - AUTH_API_PORT=8000
+      - USERS_API_ADDRESS=http://users-api:8083
+      - JWT_SECRET=${JWT_SECRET}
+      - ZIPKIN_URL=${ZIPKIN_URL:-}
+    depends_on:
+      users-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth-api.entrypoints=http"
+      - "traefik.http.routers.auth-api.middlewares=https-redirect"
+      - "traefik.http.routers.auth-api-secure.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth-api-secure.entrypoints=https"
+      - "traefik.http.routers.auth-api-secure.tls=true"
+      - "traefik.http.routers.auth-api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.auth-api.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.auth-api-stripprefix.stripprefix.prefixes=/api/auth"
+      - "traefik.http.routers.auth-api-secure.middlewares=auth-api-stripprefix,cors-headers"
+
+  # Todos API (Node.js)
+  todos-api:
+    build:
+      context: ./todos-api
+      dockerfile: Dockerfile
+    container_name: todos-api
+    restart: unless-stopped
+    networks:
+      - app-network
+    environment:
+      - TODO_API_PORT=8082
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=${REDIS_CHANNEL:-log_channel}
+      - ZIPKIN_URL=${ZIPKIN_URL:-http://zipkin:9411/api/v2/spans}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.todos-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/todos`)"
+      - "traefik.http.routers.todos-api.entrypoints=http"
+      - "traefik.http.routers.todos-api.middlewares=https-redirect"
+      - "traefik.http.routers.todos-api-secure.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/todos`)"
+      - "traefik.http.routers.todos-api-secure.entrypoints=https"
+      - "traefik.http.routers.todos-api-secure.tls=true"
+      - "traefik.http.routers.todos-api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.todos-api.loadbalancer.server.port=8082"
+      - "traefik.http.middlewares.todos-api-stripprefix.stripprefix.prefixes=/api/todos"
+      - "traefik.http.routers.todos-api-secure.middlewares=todos-api-stripprefix,cors-headers"
+
+  # Log Message Processor (Python)
+  log-processor:
+    build:
+      context: ./log-message-processor
+      dockerfile: Dockerfile
+    container_name: log-processor
+    restart: unless-stopped
+    networks:
+      - app-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=${REDIS_CHANNEL:-log_channel}
+      - ZIPKIN_URL=${ZIPKIN_URL:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Frontend (Vue.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.frontend.entrypoints=http"
+      - "traefik.http.routers.frontend.middlewares=https-redirect"
+      - "traefik.http.routers.frontend-secure.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.frontend-secure.entrypoints=https"
+      - "traefik.http.routers.frontend-secure.tls=true"
+      - "traefik.http.routers.frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend-secure.middlewares=cors-headers"
+
+  # Middlewares
+  # These are defined as labels on traefik service but referenced here
+  
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+

@@ -1,0 +1,277 @@
+name: Application Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - 'auth-api/**'
+      - 'todos-api/**'
+      - 'users-api/**'
+      - 'log-message-processor/**'
+      - 'docker-compose.yml'
+      - 'traefik/**'
+      - '.github/workflows/app-deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - 'auth-api/**'
+      - 'todos-api/**'
+      - 'users-api/**'
+      - 'log-message-processor/**'
+      - 'docker-compose.yml'
+      - 'traefik/**'
+  workflow_dispatch:
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      auth-api: ${{ steps.changes.outputs.auth-api }}
+      todos-api: ${{ steps.changes.outputs.todos-api }}
+      users-api: ${{ steps.changes.outputs.users-api }}
+      log-processor: ${{ steps.changes.outputs.log-processor }}
+      docker-compose: ${{ steps.changes.outputs.docker-compose }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            auth-api:
+              - 'auth-api/**'
+            todos-api:
+              - 'todos-api/**'
+            users-api:
+              - 'users-api/**'
+            log-processor:
+              - 'log-message-processor/**'
+            docker-compose:
+              - 'docker-compose.yml'
+              - 'traefik/**'
+
+  build-and-push:
+    name: Build and Push Docker Images
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.frontend == 'true' ||
+      needs.detect-changes.outputs.auth-api == 'true' ||
+      needs.detect-changes.outputs.todos-api == 'true' ||
+      needs.detect-changes.outputs.users-api == 'true' ||
+      needs.detect-changes.outputs.log-processor == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Frontend
+        if: needs.detect-changes.outputs.frontend == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-frontend:latest
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-frontend:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-frontend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-frontend:buildcache,mode=max
+
+      - name: Build and Push Auth API
+        if: needs.detect-changes.outputs.auth-api == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth-api
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-auth-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-auth-api:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-auth-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-auth-api:buildcache,mode=max
+
+      - name: Build and Push Todos API
+        if: needs.detect-changes.outputs.todos-api == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./todos-api
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-todos-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-todos-api:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-todos-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-todos-api:buildcache,mode=max
+
+      - name: Build and Push Users API
+        if: needs.detect-changes.outputs.users-api == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./users-api
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-users-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-users-api:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-users-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-users-api:buildcache,mode=max
+
+      - name: Build and Push Log Processor
+        if: needs.detect-changes.outputs.log-processor == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./log-message-processor
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-log-processor:latest
+            ${{ secrets.DOCKER_USERNAME }}/devops-stage6-log-processor:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-log-processor:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/devops-stage6-log-processor:buildcache,mode=max
+
+  deploy:
+    name: Deploy to Production
+    needs: [detect-changes, build-and-push]
+    if: |
+      always() &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Application
+        run: |
+          ssh -i ~/.ssh/deploy_key.pem ubuntu@${{ secrets.SERVER_IP }} << 'ENDSSH'
+            set -e
+            
+            # Navigate to application directory
+            cd /home/ubuntu/app
+            
+            # Pull latest code
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            # Pull latest Docker images
+            echo "Pulling latest Docker images..."
+            docker compose pull
+            
+            # Restart services (only changed containers will be recreated)
+            echo "Restarting services..."
+            docker compose up -d --remove-orphans
+            
+            # Wait for services to be healthy
+            echo "Waiting for services to be healthy..."
+            sleep 10
+            
+            # Check service status
+            echo "Checking service status..."
+            docker compose ps
+            
+            # Cleanup unused images
+            echo "Cleaning up unused images..."
+            docker image prune -f
+            
+            echo "Deployment completed successfully!"
+          ENDSSH
+
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment..."
+          sleep 15
+          
+          # Check if the application is accessible
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DOMAIN_NAME }} || echo "000")
+          
+          if [ "$HTTP_STATUS" == "200" ] || [ "$HTTP_STATUS" == "301" ] || [ "$HTTP_STATUS" == "302" ]; then
+            echo "✅ Application is accessible (HTTP Status: $HTTP_STATUS)"
+          else
+            echo "⚠️ Warning: Application returned HTTP Status: $HTTP_STATUS"
+          fi
+
+      - name: Send Deployment Notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: '${{ job.status == ''success'' && ''✅'' || ''❌'' }} Application Deployment ${{ job.status }} - DevOps Stage 6'
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: DevOps CI/CD <${{ secrets.GMAIL_USERNAME }}>
+          body: |
+            Application deployment ${{ job.status }}!
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+            
+            Changed Services:
+            - Frontend: ${{ needs.detect-changes.outputs.frontend }}
+            - Auth API: ${{ needs.detect-changes.outputs.auth-api }}
+            - Todos API: ${{ needs.detect-changes.outputs.todos-api }}
+            - Users API: ${{ needs.detect-changes.outputs.users-api }}
+            - Log Processor: ${{ needs.detect-changes.outputs.log-processor }}
+            
+            View the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Application URL: https://${{ secrets.DOMAIN_NAME }}
+
+  rollback:
+    name: Rollback on Failure
+    needs: [deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Rollback Deployment
+        run: |
+          ssh -i ~/.ssh/deploy_key.pem ubuntu@${{ secrets.SERVER_IP }} << 'ENDSSH'
+            cd /home/ubuntu/app
+            echo "Rolling back to previous version..."
+            git reset --hard HEAD~1
+            docker compose up -d --force-recreate
+            echo "Rollback completed!"
+          ENDSSH
+
