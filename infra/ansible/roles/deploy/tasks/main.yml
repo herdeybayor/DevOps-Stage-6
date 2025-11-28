@@ -9,16 +9,16 @@
     repo: "{{ github_repo_url }}"
     dest: "{{ app_directory }}"
     version: main
-    force: yes
   become_user: ubuntu
   when: not git_repo.stat.exists
 
-- name: Pull latest changes from repository
+- name: Pull latest changes from repository (idempotent)
   git:
     repo: "{{ github_repo_url }}"
     dest: "{{ app_directory }}"
     version: main
-    force: yes
+    update: yes
+    force: no
   become_user: ubuntu
   register: git_pull
   when: git_repo.stat.exists
@@ -63,18 +63,19 @@
   become_user: ubuntu
   ignore_errors: yes
 
-- name: Build and start Docker Compose services
+- name: Build and start Docker Compose services (only if code changed)
   community.docker.docker_compose:
     project_src: "{{ app_directory }}"
     state: present
-    build: yes
-    pull: yes
-    remove_orphans: yes
+    build: no
+    pull: no
+    remove_orphans: no
   become_user: ubuntu
   register: docker_compose_result
   retries: 3
   delay: 10
   until: docker_compose_result is succeeded
+  when: git_pull.changed or git_pull.skipped
 
 - name: Wait for services to be healthy
   wait_for:

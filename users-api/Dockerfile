@@ -1,6 +1,6 @@
 # Multi-stage build for Java Spring Boot Users API
 # Stage 1: Build with Maven
-FROM maven:3.6-jdk-8 as builder
+FROM maven:3.8-openjdk-8 as builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY src ./src
 RUN mvn package -DskipTests
 
 # Stage 2: Create runtime image
-FROM openjdk:8-jre-alpine
+FROM openjdk:8-jdk-slim
 
 WORKDIR /app
 

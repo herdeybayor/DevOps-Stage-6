@@ -1,5 +1,5 @@
 # Dockerfile for Node.js Todos API
-FROM node:12-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 

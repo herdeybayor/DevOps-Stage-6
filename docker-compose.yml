@@ -60,10 +60,11 @@ services:
       - SERVER_PORT=8083
       - SPRING_ZIPKIN_BASE_URL=${ZIPKIN_URL:-http://zipkin:9411}
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8083/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 60s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.users-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/users`)"
@@ -92,8 +93,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ZIPKIN_URL=${ZIPKIN_URL:-}
     depends_on:
-      users-api:
-        condition: service_healthy
+      - users-api
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/version || exit 1"]
       interval: 30s

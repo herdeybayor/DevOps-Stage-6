@@ -1,7 +1,12 @@
 # Dockerfile for Python Log Message Processor
-FROM python:3.8-slim
+FROM python:3.9-slim
 
 WORKDIR /app
+
+# Install build dependencies for compiling thriftpy
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY requirements.txt .

@@ -1,6 +1,6 @@
 # Multi-stage build for Vue.js frontend
 # Stage 1: Build the application
-FROM node:12-alpine as builder
+FROM node:20-alpine as builder
 
 WORKDIR /app
 

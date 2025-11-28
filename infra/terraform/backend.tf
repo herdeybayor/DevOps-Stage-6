@@ -16,13 +16,25 @@ terraform {
     }
   }
 
-  # Remote backend configuration
-  # Uncomment and configure after creating S3 bucket and DynamoDB table
+  # Remote backend configuration for S3
+  # To enable: Create S3 bucket and DynamoDB table, then uncomment below
+  # One-time setup:
+  # ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+  # BUCKET="devops-stage6-terraform-state-${ACCOUNT_ID}"
+  # aws s3api create-bucket --bucket $BUCKET --region us-east-1
+  # aws s3api put-bucket-versioning --bucket $BUCKET --versioning-configuration Status=Enabled
+  # aws s3api put-bucket-encryption --bucket $BUCKET --server-side-encryption-configuration '{...}'
+  # aws dynamodb create-table --table-name terraform-locks \
+  #   --attribute-definitions AttributeName=LockID,AttributeType=S \
+  #   --key-schema AttributeName=LockID,KeyType=HASH \
+  #   --billing-mode PAY_PER_REQUEST
+  # Then uncomment backend block below and run: terraform init -migrate-state
+
   # backend "s3" {
-  #   bucket         = "devops-stage6-terraform-state"
+  #   bucket         = "devops-stage6-terraform-state-${AWS_ACCOUNT_ID}"
   #   key            = "terraform.tfstate"
   #   region         = "us-east-1"
-  #   dynamodb_table = "terraform-state-lock"
+  #   dynamodb_table = "terraform-locks"
   #   encrypt        = true
   # }
 }

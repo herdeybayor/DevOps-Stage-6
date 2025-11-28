@@ -20,7 +20,7 @@ var (
 	// ErrWrongCredentials indicates that login attempt failed because of incorrect login or password
 	ErrWrongCredentials = echo.NewHTTPError(http.StatusUnauthorized, "username or password is invalid")
 
-	jwtSecret = "myfancysecret"
+	jwtSecret = ""
 )
 
 func main() {
