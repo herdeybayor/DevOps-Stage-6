@@ -1,9 +1,8 @@
 ---
 - name: Restart Docker Compose services
-  community.docker.docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: present
-    restarted: yes
   become_user: ubuntu
 
 - name: Reload systemd

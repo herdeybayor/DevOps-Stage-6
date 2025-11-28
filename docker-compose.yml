@@ -60,23 +60,16 @@ services:
       - SERVER_PORT=8083
       - SPRING_ZIPKIN_BASE_URL=${ZIPKIN_URL:-http://zipkin:9411}
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8083/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8083/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.users-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/users`)"
+      - "traefik.http.routers.users-api.rule=PathPrefix(`/users/`)"
       - "traefik.http.routers.users-api.entrypoints=http"
-      - "traefik.http.routers.users-api.middlewares=https-redirect"
-      - "traefik.http.routers.users-api-secure.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/users`)"
-      - "traefik.http.routers.users-api-secure.entrypoints=https"
-      - "traefik.http.routers.users-api-secure.tls=true"
-      - "traefik.http.routers.users-api-secure.tls.certresolver=letsencrypt"
       - "traefik.http.services.users-api.loadbalancer.server.port=8083"
-      - "traefik.http.middlewares.users-api-stripprefix.stripprefix.prefixes=/api/users"
-      - "traefik.http.routers.users-api-secure.middlewares=users-api-stripprefix,cors-headers"
 
   # Auth API (Go)
   auth-api:
@@ -101,16 +94,9 @@ services:
       retries: 5
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth-api.rule=PathPrefix(`/login/`)"
       - "traefik.http.routers.auth-api.entrypoints=http"
-      - "traefik.http.routers.auth-api.middlewares=https-redirect"
-      - "traefik.http.routers.auth-api-secure.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/auth`)"
-      - "traefik.http.routers.auth-api-secure.entrypoints=https"
-      - "traefik.http.routers.auth-api-secure.tls=true"
-      - "traefik.http.routers.auth-api-secure.tls.certresolver=letsencrypt"
       - "traefik.http.services.auth-api.loadbalancer.server.port=8000"
-      - "traefik.http.middlewares.auth-api-stripprefix.stripprefix.prefixes=/api/auth"
-      - "traefik.http.routers.auth-api-secure.middlewares=auth-api-stripprefix,cors-headers"
 
   # Todos API (Node.js)
   todos-api:
@@ -139,16 +125,9 @@ services:
       start_period: 40s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.todos-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/todos`)"
+      - "traefik.http.routers.todos-api.rule=PathPrefix(`/todos/`)"
       - "traefik.http.routers.todos-api.entrypoints=http"
-      - "traefik.http.routers.todos-api.middlewares=https-redirect"
-      - "traefik.http.routers.todos-api-secure.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api/todos`)"
-      - "traefik.http.routers.todos-api-secure.entrypoints=https"
-      - "traefik.http.routers.todos-api-secure.tls=true"
-      - "traefik.http.routers.todos-api-secure.tls.certresolver=letsencrypt"
       - "traefik.http.services.todos-api.loadbalancer.server.port=8082"
-      - "traefik.http.middlewares.todos-api-stripprefix.stripprefix.prefixes=/api/todos"
-      - "traefik.http.routers.todos-api-secure.middlewares=todos-api-stripprefix,cors-headers"
 
   # Log Message Processor (Python)
   log-processor:
@@ -184,15 +163,10 @@ services:
       retries: 5
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/login`) && !PathPrefix(`/todos`)"
       - "traefik.http.routers.frontend.entrypoints=http"
-      - "traefik.http.routers.frontend.middlewares=https-redirect"
-      - "traefik.http.routers.frontend-secure.rule=Host(`${DOMAIN_NAME}`)"
-      - "traefik.http.routers.frontend-secure.entrypoints=https"
-      - "traefik.http.routers.frontend-secure.tls=true"
-      - "traefik.http.routers.frontend-secure.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
-      - "traefik.http.routers.frontend-secure.middlewares=cors-headers"
+      - "traefik.http.routers.frontend.priority=1"
 
   # Middlewares
   # These are defined as labels on traefik service but referenced here

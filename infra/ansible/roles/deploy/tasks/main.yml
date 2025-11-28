@@ -57,19 +57,18 @@
     mode: '0600'
 
 - name: Stop existing containers (if any)
-  community.docker.docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: absent
   become_user: ubuntu
   ignore_errors: yes
 
 - name: Build and start Docker Compose services (only if code changed)
-  community.docker.docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: present
-    build: no
-    pull: no
-    remove_orphans: no
+    build: policy
+    pull: never
   become_user: ubuntu
   register: docker_compose_result
   retries: 3
