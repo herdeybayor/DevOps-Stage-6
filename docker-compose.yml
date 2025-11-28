@@ -91,6 +91,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.auth-api.rule=PathPrefix(`/login/`)"
       - "traefik.http.routers.auth-api.entrypoints=http"
+      - "traefik.http.routers.auth-api.service=auth-api"
       - "traefik.http.services.auth-api.loadbalancer.server.port=8000"
 
   # Todos API (Node.js)
@@ -122,6 +123,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.todos-api.rule=PathPrefix(`/todos/`)"
       - "traefik.http.routers.todos-api.entrypoints=http"
+      - "traefik.http.routers.todos-api.service=todos-api"
       - "traefik.http.services.todos-api.loadbalancer.server.port=8082"
 
   # Log Message Processor (Python)
