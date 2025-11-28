@@ -27,10 +27,14 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
         final HttpServletRequest request = (HttpServletRequest) req;
         final HttpServletResponse response = (HttpServletResponse) res;
         final String authHeader = request.getHeader("authorization");
+        final String requestPath = request.getRequestURI();
 
         if ("OPTIONS".equals(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);
 
+            chain.doFilter(req, res);
+        } else if (isPublicEndpoint(requestPath)) {
+            // Skip JWT validation for health check and public endpoints
             chain.doFilter(req, res);
         } else {
 
@@ -52,5 +56,13 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
 
             chain.doFilter(req, res);
         }
+    }
+
+    private boolean isPublicEndpoint(final String requestPath) {
+        return requestPath.equals("/") ||
+               requestPath.equals("/health") ||
+               requestPath.equals("/health.json") ||
+               requestPath.equals("/actuator/health") ||
+               requestPath.startsWith("/favicon");
     }
 }

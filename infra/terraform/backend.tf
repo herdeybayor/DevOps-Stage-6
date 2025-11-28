@@ -30,13 +30,13 @@ terraform {
   #   --billing-mode PAY_PER_REQUEST
   # Then uncomment backend block below and run: terraform init -migrate-state
 
-  # backend "s3" {
-  #   bucket         = "devops-stage6-terraform-state-${AWS_ACCOUNT_ID}"
-  #   key            = "terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "terraform-locks"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    bucket         = "devops-stage6-terraform-state-785202559067"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
 }
 
 provider "aws" {

@@ -18,10 +18,30 @@ resource "aws_instance" "app_server" {
               # Update system
               apt-get update
               apt-get upgrade -y
-              
+
               # Set hostname
               hostnamectl set-hostname ${var.project_name}-server
-              
+
+              # Install Docker
+              apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+              add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+              apt-get update
+              apt-get install -y docker-ce docker-ce-cli containerd.io
+
+              # Install Docker Compose Plugin (Docker Compose v2)
+              apt-get install -y docker-compose-plugin
+
+              # Also create a symlink for docker-compose command
+              ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+
+              # Add ubuntu user to docker group
+              usermod -aG docker ubuntu
+
+              # Create application directory
+              mkdir -p /opt/devops-app
+              chown ubuntu:ubuntu /opt/devops-app
+
               # Create a marker file to indicate instance is initialized
               touch /var/tmp/instance-initialized
               EOF
