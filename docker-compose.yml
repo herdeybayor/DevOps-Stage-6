@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Traefik Reverse Proxy
   traefik:
-    image: traefik:v3.1
+    image: traefik:latest
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -20,6 +20,7 @@ services:
       - ./traefik/config:/config:ro
     environment:
       - TZ=UTC
+      - DOCKER_API_VERSION=1.52
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"
