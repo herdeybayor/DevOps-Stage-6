@@ -5,10 +5,18 @@ api:
 entryPoints:
   http:
     address: ":80"
-  # HTTPS disabled for now - using HTTP-only during development
-  # Will be re-enabled once valid SSL certificates are obtained
-  # https:
-  #   address: ":443"
+    http:
+      redirections:
+        entrypoint:
+          to: https
+          scheme: https
+  https:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: stage6.hng.codeforgex.dev
 
 global:
   sendAnonymousUsage: false

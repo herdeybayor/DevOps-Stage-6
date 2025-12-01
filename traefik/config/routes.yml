@@ -5,32 +5,40 @@ http:
       rule: "PathPrefix(`/login/`)"
       service: auth-api
       entryPoints:
-        - http
+        - https
       priority: 10
+      tls:
+        certResolver: letsencrypt
 
     # Todos API Router - Priority 10 (high)
     todos-api:
       rule: "PathPrefix(`/todos/`)"
       service: todos-api
       entryPoints:
-        - http
+        - https
       priority: 10
+      tls:
+        certResolver: letsencrypt
 
     # Users API Router - Priority 10 (high)
     users-api:
       rule: "PathPrefix(`/users/`)"
       service: users-api
       entryPoints:
-        - http
+        - https
       priority: 10
+      tls:
+        certResolver: letsencrypt
 
     # Frontend Router - Priority 1 (low, catch-all)
     frontend:
       rule: "Path(`/`)"
       service: frontend
       entryPoints:
-        - http
+        - https
       priority: 1
+      tls:
+        certResolver: letsencrypt
 
   services:
     # Auth API Service

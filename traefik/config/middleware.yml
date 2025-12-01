@@ -34,9 +34,8 @@ http:
         frameDeny: true
         browserXssFilter: true
         contentTypeNosniff: true
-        # HSTS disabled temporarily until valid HTTPS certificates are configured
-        # forceSTSHeader: true
-        # stsIncludeSubdomains: true
-        # stsPreload: true
-        # stsSeconds: 31536000
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
 
