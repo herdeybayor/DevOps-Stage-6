@@ -5,8 +5,10 @@ api:
 entryPoints:
   http:
     address: ":80"
-  https:
-    address: ":443"
+  # HTTPS disabled for now - using HTTP-only during development
+  # Will be re-enabled once valid SSL certificates are obtained
+  # https:
+  #   address: ":443"
 
 global:
   sendAnonymousUsage: false
