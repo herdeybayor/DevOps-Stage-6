@@ -1,0 +1,132 @@
+name: Ansible Configuration & Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/ansible/**'
+      - '.github/workflows/ansible-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      server_ip:
+        description: 'EC2 Server IP (if different from Terraform state)'
+        required: false
+        type: string
+
+env:
+  ANSIBLE_HOST_KEY_CHECKING: 'False'
+  ANSIBLE_FORCE_COLOR: 'true'
+
+jobs:
+  ansible-deploy:
+    name: Deploy Application with Ansible
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/${{ secrets.KEY_NAME }}.pem
+          chmod 600 ~/.ssh/${{ secrets.KEY_NAME }}.pem
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible git python3-pip
+          ansible-galaxy collection install community.docker --force
+
+      - name: Verify Ansible Inventory
+        run: |
+          if [ ! -f "infra/ansible/inventory/hosts" ]; then
+            echo "Generating Ansible inventory from template..."
+            mkdir -p infra/ansible/inventory
+            cat > infra/ansible/inventory/hosts << 'EOF'
+          [app_servers]
+          app_server ansible_host=${{ secrets.SERVER_IP }} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/${{ secrets.KEY_NAME }}.pem
+          EOF
+          fi
+
+      - name: Verify Extra Variables
+        run: |
+          if [ ! -f "infra/ansible/extra_vars.yml" ]; then
+            echo "Generating Ansible extra variables..."
+            cat > infra/ansible/extra_vars.yml << 'EOF'
+          domain_name: ${{ secrets.DOMAIN_NAME }}
+          letsencrypt_email: ${{ secrets.LETSENCRYPT_EMAIL }}
+          jwt_secret: ${{ secrets.JWT_SECRET }}
+          github_repo_url: ${{ github.server_url }}/${{ github.repository }}
+          app_directory: /home/ubuntu/app
+          EOF
+          fi
+
+      - name: Run Ansible Playbook
+        run: |
+          cd infra/ansible
+          ansible-playbook \
+            -i inventory/hosts \
+            --extra-vars "@extra_vars.yml" \
+            -vv \
+            playbook.yml
+
+      - name: Verify Deployment
+        run: |
+          echo "Waiting for application to be ready..."
+          sleep 15
+
+          # Check if application is accessible
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DOMAIN_NAME }} || echo "000")
+
+          if [ "$HTTP_STATUS" == "200" ] || [ "$HTTP_STATUS" == "301" ] || [ "$HTTP_STATUS" == "302" ]; then
+            echo "✅ Application is accessible (HTTP Status: $HTTP_STATUS)"
+          else
+            echo "⚠️  Warning: Application returned HTTP Status: $HTTP_STATUS"
+          fi
+
+      - name: Send Success Notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: '✅ Ansible Deployment Successful - DevOps Stage 6'
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: DevOps CI/CD <${{ secrets.GMAIL_USERNAME }}>
+          body: |
+            Ansible deployment completed successfully!
+
+            Server: ${{ secrets.SERVER_IP }}
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+
+            Application URL: https://${{ secrets.DOMAIN_NAME }}
+
+            View the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Send Failure Notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: '❌ Ansible Deployment Failed - DevOps Stage 6'
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: DevOps CI/CD <${{ secrets.GMAIL_USERNAME }}>
+          body: |
+            Ansible deployment failed!
+
+            Server: ${{ secrets.SERVER_IP }}
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+
+            Please check the workflow logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
