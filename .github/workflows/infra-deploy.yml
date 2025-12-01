@@ -196,8 +196,8 @@ jobs:
       - name: Install Ansible
         run: |
           sudo apt-get update
-          sudo apt-get install -y ansible
-          ansible-galaxy collection install community.docker
+          sudo apt-get install -y ansible git python3-pip
+          ansible-galaxy collection install community.docker --force
 
       - name: Terraform Init
         working-directory: ./infra/terraform
