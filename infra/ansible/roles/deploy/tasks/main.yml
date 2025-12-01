@@ -18,7 +18,7 @@
     dest: "{{ app_directory }}"
     version: main
     update: yes
-    force: no
+    force: yes
   become_user: ubuntu
   register: git_pull
   when: git_repo.stat.exists
