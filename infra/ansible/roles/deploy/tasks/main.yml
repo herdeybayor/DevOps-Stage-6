@@ -67,8 +67,8 @@
   community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: present
-    build: policy
-    pull: never
+    build: yes
+    pull: no
   become_user: ubuntu
   register: docker_compose_result
   retries: 3
