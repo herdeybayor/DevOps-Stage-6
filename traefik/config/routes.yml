@@ -2,7 +2,7 @@ http:
   routers:
     # Auth API Router - Priority 10 (high)
     auth-api:
-      rule: "PathPrefix(`/login/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`) && PathPrefix(`/login/`)"
       service: auth-api
       entryPoints:
         - https
@@ -12,7 +12,7 @@ http:
 
     # Todos API Router - Priority 10 (high)
     todos-api:
-      rule: "PathPrefix(`/todos/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`) && PathPrefix(`/todos/`)"
       service: todos-api
       entryPoints:
         - https
@@ -22,7 +22,7 @@ http:
 
     # Users API Router - Priority 10 (high)
     users-api:
-      rule: "PathPrefix(`/users/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`) && PathPrefix(`/users/`)"
       service: users-api
       entryPoints:
         - https
@@ -32,7 +32,7 @@ http:
 
     # Frontend Router - Priority 1 (low, catch-all)
     frontend:
-      rule: "Path(`/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`) && Path(`/`)"
       service: frontend
       entryPoints:
         - https
