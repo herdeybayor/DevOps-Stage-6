@@ -32,6 +32,16 @@ http:
       tls:
         certResolver: letsencrypt
 
+    # Zipkin Mock Router - Priority 5 (return 202 for tracing)
+    zipkin-mock:
+      rule: "Host(`stage6.hng.codeforgex.dev`) && Path(`/zipkin`)"
+      service: zipkin-mock
+      entryPoints:
+        - https
+      priority: 5
+      tls:
+        certResolver: letsencrypt
+
     # Frontend Router - Priority 1 (low, catch-all for everything else)
     frontend:
       rule: "Host(`stage6.hng.codeforgex.dev`)"
@@ -66,6 +76,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://frontend:80"
+
+    # Zipkin Mock Service - Returns 202 Accepted for tracing
+    zipkin-mock:
+      staticResponse:
+        status: 202
 
   middlewares:
     # Strip trailing slash from login path
