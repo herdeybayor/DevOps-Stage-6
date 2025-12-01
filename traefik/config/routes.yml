@@ -14,13 +14,15 @@ http:
 
     # Todos API Router - Priority 10 (high)
     todos-api:
-      rule: "Host(`stage6.hng.codeforgex.dev`) && PathPrefix(`/todos/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`) && (Path(`/todos`) || PathPrefix(`/todos/`))"
       service: todos-api
       entryPoints:
         - https
       priority: 10
       tls:
         certResolver: letsencrypt
+      middlewares:
+        - add-todos-slash
 
     # Users API Router - Priority 10 (high)
     users-api:
@@ -29,6 +31,16 @@ http:
       entryPoints:
         - https
       priority: 10
+      tls:
+        certResolver: letsencrypt
+
+    # Traefik Dashboard - Priority 6
+    traefik-dashboard:
+      rule: "Host(`stage6.hng.codeforgex.dev`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+      service: api@internal
+      entryPoints:
+        - https
+      priority: 6
       tls:
         certResolver: letsencrypt
 
@@ -89,3 +101,9 @@ http:
       replacePathRegex:
         regex: "^/login/(.*)$"
         replacement: "/login$1"
+
+    # Add trailing slash to todos path
+    add-todos-slash:
+      replacePathRegex:
+        regex: "^/todos$"
+        replacement: "/todos/"
