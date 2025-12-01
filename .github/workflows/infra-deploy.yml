@@ -214,7 +214,29 @@ jobs:
         working-directory: ./infra/terraform
         run: |
           if [ "${{ needs.terraform-plan.outputs.has_changes }}" == "true" ]; then
-            terraform apply -auto-approve tfplan
+            # Try to apply saved plan first
+            if [ -f "tfplan" ]; then
+              terraform apply -auto-approve tfplan || {
+                # If saved plan is stale, run fresh plan and apply
+                echo "Saved plan is stale, running fresh plan..."
+                terraform plan -no-color -out=tfplan \
+                  -var="key_name=${{ secrets.KEY_NAME }}" \
+                  -var="domain_name=${{ secrets.DOMAIN_NAME }}" \
+                  -var="letsencrypt_email=${{ secrets.LETSENCRYPT_EMAIL }}" \
+                  -var="jwt_secret=${{ secrets.JWT_SECRET }}" \
+                  -var="github_repo_url=${{ github.server_url }}/${{ github.repository }}"
+                terraform apply -auto-approve tfplan
+              }
+            else
+              # No saved plan, run fresh plan and apply
+              terraform plan -no-color -out=tfplan \
+                -var="key_name=${{ secrets.KEY_NAME }}" \
+                -var="domain_name=${{ secrets.DOMAIN_NAME }}" \
+                -var="letsencrypt_email=${{ secrets.LETSENCRYPT_EMAIL }}" \
+                -var="jwt_secret=${{ secrets.JWT_SECRET }}" \
+                -var="github_repo_url=${{ github.server_url }}/${{ github.repository }}"
+              terraform apply -auto-approve tfplan
+            fi
           else
             echo "No changes to apply. Infrastructure is up to date."
           fi
