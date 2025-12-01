@@ -2,13 +2,15 @@ http:
   routers:
     # Auth API Router - Priority 10 (high)
     auth-api:
-      rule: "Host(`stage6.hng.codeforgex.dev`) && PathPrefix(`/login/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`) && (Path(`/login`) || PathPrefix(`/login/`))"
       service: auth-api
       entryPoints:
         - https
       priority: 10
       tls:
         certResolver: letsencrypt
+      middlewares:
+        - strip-login-slash
 
     # Todos API Router - Priority 10 (high)
     todos-api:
@@ -64,3 +66,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://frontend:80"
+
+  middlewares:
+    # Strip trailing slash from login path
+    strip-login-slash:
+      replacePathRegex:
+        regex: "^/login/(.*)$"
+        replacement: "/login$1"
