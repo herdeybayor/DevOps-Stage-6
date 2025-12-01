@@ -146,9 +146,18 @@ services:
       retries: 5
     labels: []
 
-  # Middlewares
-  # These are defined as labels on traefik service but referenced here
-  
+  # Mock Zipkin Service - Returns 202 for tracing data
+  zipkin-mock:
+    image: nginx:alpine
+    container_name: zipkin-mock
+    restart: unless-stopped
+    networks:
+      - app-network
+    expose:
+      - "8080"
+    volumes:
+      - ./zipkin-mock-config.conf:/etc/nginx/conf.d/default.conf:ro
+
 networks:
   app-network:
     driver: bridge

@@ -77,10 +77,11 @@ http:
         servers:
           - url: "http://frontend:80"
 
-    # Zipkin Mock Service - Returns 202 Accepted for tracing
+    # Zipkin Mock Service - Routes to mock zipkin server
     zipkin-mock:
-      staticResponse:
-        status: 202
+      loadBalancer:
+        servers:
+          - url: "http://zipkin-mock:8080"
 
   middlewares:
     # Strip trailing slash from login path
