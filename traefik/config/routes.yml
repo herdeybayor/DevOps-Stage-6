@@ -38,41 +38,21 @@ http:
       loadBalancer:
         servers:
           - url: "http://auth-api:8000"
-        healthCheck:
-          scheme: "http"
-          path: "/version"
-          interval: "10s"
-          timeout: "5s"
 
     # Todos API Service
     todos-api:
       loadBalancer:
         servers:
           - url: "http://todos-api:8082"
-        healthCheck:
-          scheme: "http"
-          path: "/health"
-          interval: "10s"
-          timeout: "5s"
 
     # Users API Service
     users-api:
       loadBalancer:
         servers:
           - url: "http://users-api:8083"
-        healthCheck:
-          scheme: "http"
-          path: "/health"
-          interval: "10s"
-          timeout: "5s"
 
     # Frontend Service
     frontend:
       loadBalancer:
         servers:
           - url: "http://frontend:80"
-        healthCheck:
-          scheme: "http"
-          path: "/"
-          interval: "10s"
-          timeout: "5s"
