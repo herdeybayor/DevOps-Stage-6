@@ -30,9 +30,9 @@ http:
       tls:
         certResolver: letsencrypt
 
-    # Frontend Router - Priority 1 (low, catch-all)
+    # Frontend Router - Priority 1 (low, catch-all for everything else)
     frontend:
-      rule: "Host(`stage6.hng.codeforgex.dev`) && Path(`/`)"
+      rule: "Host(`stage6.hng.codeforgex.dev`)"
       service: frontend
       entryPoints:
         - https
