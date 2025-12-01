@@ -60,12 +60,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.users-api.rule=PathPrefix(`/users/`)"
-      - "traefik.http.routers.users-api.entrypoints=http"
-      - "traefik.http.routers.users-api.priority=10"
-      - "traefik.http.services.users-api.loadbalancer.server.port=8083"
+    labels: []
 
   # Auth API (Go)
   auth-api:
@@ -88,13 +83,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.auth-api.rule=PathPrefix(`/login/`)"
-      - "traefik.http.routers.auth-api.entrypoints=http"
-      - "traefik.http.routers.auth-api.priority=10"
-      - "traefik.http.routers.auth-api.service=auth-api"
-      - "traefik.http.services.auth-api.loadbalancer.server.port=8000"
+    labels: []
 
   # Todos API (Node.js)
   todos-api:
@@ -121,13 +110,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.todos-api.rule=PathPrefix(`/todos/`)"
-      - "traefik.http.routers.todos-api.entrypoints=http"
-      - "traefik.http.routers.todos-api.priority=10"
-      - "traefik.http.routers.todos-api.service=todos-api"
-      - "traefik.http.services.todos-api.loadbalancer.server.port=8082"
+    labels: []
 
   # Log Message Processor (Python)
   log-processor:
@@ -161,13 +144,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Path(`/`)"
-      - "traefik.http.routers.frontend.entrypoints=http"
-      - "traefik.http.routers.frontend.service=frontend"
-      - "traefik.http.routers.frontend.priority=1"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    labels: []
 
   # Middlewares
   # These are defined as labels on traefik service but referenced here

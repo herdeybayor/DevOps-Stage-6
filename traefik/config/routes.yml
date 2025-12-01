@@ -1,0 +1,78 @@
+http:
+  routers:
+    # Auth API Router - Priority 10 (high)
+    auth-api:
+      rule: "PathPrefix(`/login/`)"
+      service: auth-api
+      entryPoints:
+        - http
+      priority: 10
+
+    # Todos API Router - Priority 10 (high)
+    todos-api:
+      rule: "PathPrefix(`/todos/`)"
+      service: todos-api
+      entryPoints:
+        - http
+      priority: 10
+
+    # Users API Router - Priority 10 (high)
+    users-api:
+      rule: "PathPrefix(`/users/`)"
+      service: users-api
+      entryPoints:
+        - http
+      priority: 10
+
+    # Frontend Router - Priority 1 (low, catch-all)
+    frontend:
+      rule: "Path(`/`)"
+      service: frontend
+      entryPoints:
+        - http
+      priority: 1
+
+  services:
+    # Auth API Service
+    auth-api:
+      loadBalancer:
+        servers:
+          - url: "http://auth-api:8000"
+        healthCheck:
+          scheme: "http"
+          path: "/version"
+          interval: "10s"
+          timeout: "5s"
+
+    # Todos API Service
+    todos-api:
+      loadBalancer:
+        servers:
+          - url: "http://todos-api:8082"
+        healthCheck:
+          scheme: "http"
+          path: "/health"
+          interval: "10s"
+          timeout: "5s"
+
+    # Users API Service
+    users-api:
+      loadBalancer:
+        servers:
+          - url: "http://users-api:8083"
+        healthCheck:
+          scheme: "http"
+          path: "/health"
+          interval: "10s"
+          timeout: "5s"
+
+    # Frontend Service
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"
+        healthCheck:
+          scheme: "http"
+          path: "/"
+          interval: "10s"
+          timeout: "5s"
