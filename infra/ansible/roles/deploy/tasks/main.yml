@@ -74,7 +74,7 @@
     project_src: "{{ app_directory }}"
     state: present
     build: always
-    pull: never
+    pull: policy
   become_user: ubuntu
   register: docker_compose_result
   retries: 2
