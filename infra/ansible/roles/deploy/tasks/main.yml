@@ -63,18 +63,17 @@
   become_user: ubuntu
   ignore_errors: yes
 
-- name: Build and start Docker Compose services (only if code changed)
+- name: Build and start Docker Compose services
   community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: present
-    build: yes
-    pull: no
+    build: always
+    pull: never
   become_user: ubuntu
   register: docker_compose_result
   retries: 3
   delay: 10
   until: docker_compose_result is succeeded
-  when: git_pull.changed or git_pull.skipped
 
 - name: Wait for services to be healthy
   wait_for:

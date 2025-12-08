@@ -77,11 +77,12 @@
       - docker-compose
     state: present
 
-- name: Configure UFW - Allow SSH
+- name: Configure UFW - Allow SSH (with comment to prevent lockout)
   ufw:
     rule: allow
     port: '22'
     proto: tcp
+    comment: 'SSH access - DO NOT REMOVE'
 
 - name: Configure UFW - Allow HTTP
   ufw:
@@ -95,10 +96,18 @@
     port: '443'
     proto: tcp
 
-- name: Enable UFW
+- name: Set UFW default policies before enabling
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+    - { direction: 'routed', policy: 'deny' }
+
+- name: Enable UFW with force to avoid interactive prompt
   ufw:
     state: enabled
-    policy: deny
 
 - name: Configure Docker daemon options
   copy:
