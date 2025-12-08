@@ -65,12 +65,13 @@ jobs:
           fi
 
       - name: Run Ansible Playbook
+        timeout-minutes: 30
         run: |
           cd infra/ansible
           ansible-playbook \
             -i inventory/hosts \
             --extra-vars "@extra_vars.yml" \
-            -vv \
+            -vvv \
             playbook.yml
 
       - name: Verify Deployment

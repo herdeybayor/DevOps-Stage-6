@@ -9,8 +9,11 @@
     repo: "{{ github_repo_url }}"
     dest: "{{ app_directory }}"
     version: main
+    accept_hostkey: yes
+    depth: 1
   become_user: ubuntu
   when: not git_repo.stat.exists
+  timeout: 300
 
 - name: Pull latest changes from repository (idempotent)
   git:
@@ -19,9 +22,11 @@
     version: main
     update: yes
     force: yes
+    accept_hostkey: yes
   become_user: ubuntu
   register: git_pull
   when: git_repo.stat.exists
+  timeout: 300
 
 - name: Create .env file from template
   template:
@@ -62,6 +67,7 @@
     state: absent
   become_user: ubuntu
   ignore_errors: yes
+  timeout: 120
 
 - name: Build and start Docker Compose services
   community.docker.docker_compose_v2:
@@ -71,9 +77,12 @@
     pull: never
   become_user: ubuntu
   register: docker_compose_result
-  retries: 3
+  retries: 2
   delay: 10
   until: docker_compose_result is succeeded
+  timeout: 600
+  async: 700
+  poll: 10
 
 - name: Wait for services to be healthy
   wait_for:
